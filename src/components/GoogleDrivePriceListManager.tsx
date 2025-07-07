@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, ChevronRight, Home, FolderOpen } from 'lucide-react';
+import { Search, Download, AlertCircle, ExternalLink, ArrowUpDown, Folder, ChevronRight, Home, FolderOpen } from 'lucide-react';
 import { GoogleDriveService, DriveFile } from '../services/googleDriveService';
 
 interface PriceListFile {
@@ -60,7 +60,16 @@ const GoogleDrivePriceListManager: React.FC = () => {
       });
 
       setFiles(processedFiles);
-      setLastUpdate(new Date());
+      
+      // En son değişiklik tarihini bul
+      if (processedFiles.length > 0) {
+        const latestModification = processedFiles.reduce((latest, file) => {
+          return file.modifiedTime > latest ? file.modifiedTime : latest;
+        }, processedFiles[0].modifiedTime);
+        setLastUpdate(latestModification);
+      } else {
+        setLastUpdate(new Date());
+      }
     } catch (err) {
       setError('Dosyalar yüklenirken hata oluştu. Lütfen API anahtarınızı kontrol edin.');
       console.error('Dosya yükleme hatası:', err);
@@ -208,7 +217,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <RefreshCw className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Fiyat Listeleri Yükleniyor</h3>
           <p className="text-gray-600">Google Drive'dan dosyalar getiriliyor...</p>
         </div>
@@ -235,7 +244,6 @@ const GoogleDrivePriceListManager: React.FC = () => {
             onClick={() => loadFiles(currentFolderId)}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
             Tekrar Dene
           </button>
         </div>
@@ -252,39 +260,30 @@ const GoogleDrivePriceListManager: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Fiyat Listeleri</h1>
               <p className="text-gray-600">
-                {lastUpdate ? `Son güncellenme: ${formatDate(lastUpdate)}` : 'Yükleniyor...'}
+                {lastUpdate ? `Son değişiklik: ${formatDate(lastUpdate)}` : 'Yükleniyor...'}
               </p>
             </div>
-            <div className="flex items-center gap-6">
-              <button
-                onClick={() => loadFiles(currentFolderId)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Yenile
-              </button>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mb-1">
-                    <Folder className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="text-xl font-bold text-blue-600">{stats.folders}</div>
-                  <div className="text-xs text-gray-500">Klasör</div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="flex flex-col items-center">
+                <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mb-1">
+                  <Folder className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-1">
-                    <div className="text-red-600 text-xs font-bold">PDF</div>
-                  </div>
-                  <div className="text-xl font-bold text-red-600">{stats.pdfs}</div>
-                  <div className="text-xs text-gray-500">PDF</div>
+                <div className="text-xl font-bold text-blue-600">{stats.folders}</div>
+                <div className="text-xs text-gray-500">Klasör</div>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-1">
+                  <div className="text-red-600 text-xs font-bold">PDF</div>
                 </div>
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg mb-1">
-                    <div className="text-green-600 text-xs font-bold">XLS</div>
-                  </div>
-                  <div className="text-xl font-bold text-green-600">{stats.excels}</div>
-                  <div className="text-xs text-gray-500">Excel</div>
+                <div className="text-xl font-bold text-red-600">{stats.pdfs}</div>
+                <div className="text-xs text-gray-500">PDF</div>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg mb-1">
+                  <div className="text-green-600 text-xs font-bold">XLS</div>
                 </div>
+                <div className="text-xl font-bold text-green-600">{stats.excels}</div>
+                <div className="text-xs text-gray-500">Excel</div>
               </div>
             </div>
           </div>
