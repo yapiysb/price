@@ -40,11 +40,12 @@ export class GoogleDriveService {
 
       const data = await response.json();
       
-      // Sadece PDF ve Excel dosyalarını filtrele
+      // PDF, Excel dosyalarını ve klasörleri filtrele
       const supportedFiles = data.files.filter((file: DriveFile) => 
         file.mimeType === 'application/pdf' ||
         file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.mimeType === 'application/vnd.ms-excel'
+        file.mimeType === 'application/vnd.ms-excel' ||
+        file.mimeType === 'application/vnd.google-apps.folder'
       );
 
       return supportedFiles;
@@ -55,7 +56,9 @@ export class GoogleDriveService {
   }
 
   getFileViewUrl(fileId: string, mimeType: string): string {
-    if (mimeType === 'application/pdf') {
+    if (mimeType === 'application/vnd.google-apps.folder') {
+      return `https://drive.google.com/drive/folders/${fileId}`;
+    } else if (mimeType === 'application/pdf') {
       return `https://drive.google.com/file/d/${fileId}/preview`;
     } else {
       // Excel dosyaları için Google Sheets viewer

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Sheet, Download, Eye, X, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown } from 'lucide-react';
+import { Search, FileText, Sheet, Download, Eye, X, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, File } from 'lucide-react';
 import { GoogleDriveService, DriveFile } from '../services/googleDriveService';
 
 interface PriceListFile {
   id: string;
   name: string;
-  type: 'pdf' | 'excel';
+  type: 'pdf' | 'excel' | 'folder';
   size: string;
   modifiedTime: Date;
   viewUrl: string;
   downloadUrl: string;
+  isFolder: boolean;
 }
 
 type SortOption = 'name-asc' | 'name-desc' | 'date-asc' | 'date-desc';
@@ -19,7 +20,8 @@ const GoogleDrivePriceListManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOption, setSortOption] = useState<SortOption>('date-desc'); // Default to newest first
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const driveService = GoogleDriveService.getInstance();
 
@@ -30,17 +32,28 @@ const GoogleDrivePriceListManager: React.FC = () => {
       
       const driveFiles = await driveService.getFilesFromFolder();
       
-      const processedFiles: PriceListFile[] = driveFiles.map((file: DriveFile) => ({
-        id: file.id,
-        name: file.name,
-        type: file.mimeType === 'application/pdf' ? 'pdf' : 'excel',
-        size: file.size ? formatFileSize(parseInt(file.size)) : 'Bilinmiyor',
-        modifiedTime: new Date(file.modifiedTime),
-        viewUrl: driveService.getFileViewUrl(file.id, file.mimeType),
-        downloadUrl: driveService.getFileDownloadUrl(file.id)
-      }));
+      const processedFiles: PriceListFile[] = driveFiles.map((file: DriveFile) => {
+        const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+        let fileType: 'pdf' | 'excel' | 'folder' = 'folder';
+        
+        if (!isFolder) {
+          fileType = file.mimeType === 'application/pdf' ? 'pdf' : 'excel';
+        }
+
+        return {
+          id: file.id,
+          name: file.name,
+          type: fileType,
+          size: file.size ? formatFileSize(parseInt(file.size)) : isFolder ? '-' : 'Bilinmiyor',
+          modifiedTime: new Date(file.modifiedTime),
+          viewUrl: driveService.getFileViewUrl(file.id, file.mimeType),
+          downloadUrl: driveService.getFileDownloadUrl(file.id),
+          isFolder
+        };
+      });
 
       setFiles(processedFiles);
+      setLastUpdate(new Date());
     } catch (err) {
       setError('Dosyalar yüklenirken hata oluştu. Lütfen API anahtarınızı kontrol edin.');
       console.error('Dosya yükleme hatası:', err);
@@ -55,6 +68,10 @@ const GoogleDrivePriceListManager: React.FC = () => {
 
   const sortFiles = (files: PriceListFile[], sortOption: SortOption): PriceListFile[] => {
     return [...files].sort((a, b) => {
+      // Klasörleri her zaman üstte göster
+      if (a.isFolder && !b.isFolder) return -1;
+      if (!a.isFolder && b.isFolder) return 1;
+      
       switch (sortOption) {
         case 'name-asc':
           return a.name.localeCompare(b.name, 'tr');
@@ -97,23 +114,46 @@ const GoogleDrivePriceListManager: React.FC = () => {
   };
 
   const openFileInNewTab = (file: PriceListFile) => {
-    window.open(file.viewUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  const getSortOptionLabel = (option: SortOption) => {
-    switch (option) {
-      case 'name-asc':
-        return 'Ada Göre (A-Z)';
-      case 'name-desc':
-        return 'Ada Göre (Z-A)';
-      case 'date-asc':
-        return 'Tarihe Göre (Eskiden Yeniye)';
-      case 'date-desc':
-        return 'Tarihe Göre (Yeniden Eskiye)';
-      default:
-        return '';
+    if (file.isFolder) {
+      window.open(`https://drive.google.com/drive/folders/${file.id}`, '_blank', 'noopener,noreferrer');
+    } else {
+      window.open(file.viewUrl, '_blank', 'noopener,noreferrer');
     }
   };
+
+  const getFileIcon = (file: PriceListFile) => {
+    if (file.isFolder) {
+      return <Folder className="h-8 w-8 text-blue-500 mr-3" />;
+    }
+    
+    switch (file.type) {
+      case 'pdf':
+        return (
+          <div className="h-8 w-8 mr-3 flex items-center justify-center bg-red-100 rounded text-red-600 text-xs font-bold">
+            PDF
+          </div>
+        );
+      case 'excel':
+        return (
+          <div className="h-8 w-8 mr-3 flex items-center justify-center bg-green-100 rounded text-green-600 text-xs font-bold">
+            XLS
+          </div>
+        );
+      default:
+        return <File className="h-8 w-8 text-gray-500 mr-3" />;
+    }
+  };
+
+  const getFileTypeStats = () => {
+    const stats = {
+      folders: files.filter(f => f.isFolder).length,
+      pdfs: files.filter(f => f.type === 'pdf').length,
+      excels: files.filter(f => f.type === 'excel').length
+    };
+    return stats;
+  };
+
+  const stats = getFileTypeStats();
 
   if (loading) {
     return (
@@ -162,9 +202,11 @@ const GoogleDrivePriceListManager: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Fiyat Listeleri</h1>
-              <p className="text-gray-600">Google Drive'dan otomatik olarak güncellenen fiyat listeleri</p>
+              <p className="text-gray-600">
+                {lastUpdate ? `Son güncellenme: ${formatDate(lastUpdate)}` : 'Yükleniyor...'}
+              </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <button
                 onClick={loadFiles}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -172,9 +214,19 @@ const GoogleDrivePriceListManager: React.FC = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Yenile
               </button>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">{files.length}</div>
-                <div className="text-sm text-gray-500">Toplam Dosya</div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">{stats.folders}</div>
+                  <div className="text-sm text-gray-500">Klasör</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-red-600">{stats.pdfs}</div>
+                  <div className="text-sm text-gray-500">PDF</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{stats.excels}</div>
+                  <div className="text-sm text-gray-500">Excel</div>
+                </div>
               </div>
             </div>
           </div>
@@ -187,7 +239,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Fiyat listelerinde ara..."
+                placeholder="Dosya ve klasörlerde ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -217,23 +269,21 @@ const GoogleDrivePriceListManager: React.FC = () => {
             <div key={file.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    {file.type === 'pdf' ? (
-                      <FileText className="h-8 w-8 text-red-500 mr-3" />
-                    ) : (
-                      <Sheet className="h-8 w-8 text-green-500 mr-3" />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 truncate max-w-[200px]" title={file.name}>
+                  <div className="flex items-center min-w-0 flex-1">
+                    {getFileIcon(file)}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-gray-900 break-words" title={file.name}>
                         {file.name}
                       </h3>
-                      <p className="text-sm text-gray-500">{file.size}</p>
+                      <p className="text-sm text-gray-500">
+                        {file.isFolder ? 'Klasör' : file.size}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-sm text-gray-500 mb-4">
-                  <span className="font-medium">Yüklenme Tarihi:</span> {formatDate(file.modifiedTime)}
+                  <span className="font-medium">Son Değişiklik:</span> {formatDate(file.modifiedTime)}
                 </div>
 
                 <div className="flex gap-2">
@@ -242,17 +292,19 @@ const GoogleDrivePriceListManager: React.FC = () => {
                     className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Görüntüle
+                    {file.isFolder ? 'Aç' : 'Görüntüle'}
                   </button>
-                  <a
-                    href={file.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    İndir
-                  </a>
+                  {!file.isFolder && (
+                    <a
+                      href={file.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      İndir
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
