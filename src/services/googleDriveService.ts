@@ -28,10 +28,13 @@ export class GoogleDriveService {
     return GoogleDriveService.instance;
   }
 
-  async getFilesFromFolder(): Promise<DriveFile[]> {
+  async getFilesFromFolder(folderId?: string): Promise<DriveFile[]> {
     try {
+      // Eğer folderId verilmemişse ana klasörü kullan
+      const targetFolderId = folderId || FOLDER_ID;
+      
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${FOLDER_ID}'+in+parents&key=${this.apiKey}&fields=files(id,name,mimeType,size,modifiedTime,webViewLink,webContentLink,thumbnailLink)`
+        `https://www.googleapis.com/drive/v3/files?q='${targetFolderId}'+in+parents&key=${this.apiKey}&fields=files(id,name,mimeType,size,modifiedTime,webViewLink,webContentLink,thumbnailLink)`
       );
 
       if (!response.ok) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Sheet, Download, Eye, X, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, File } from 'lucide-react';
+import { Search, FileText, Sheet, Download, Eye, X, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, File, ChevronRight, Home } from 'lucide-react';
 import { GoogleDriveService, DriveFile } from '../services/googleDriveService';
 
 interface PriceListFile {
@@ -13,6 +13,11 @@ interface PriceListFile {
   isFolder: boolean;
 }
 
+interface BreadcrumbItem {
+  id: string;
+  name: string;
+}
+
 type SortOption = 'name-asc' | 'name-desc' | 'date-asc' | 'date-desc';
 
 const GoogleDrivePriceListManager: React.FC = () => {
@@ -22,15 +27,17 @@ const GoogleDrivePriceListManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string>('');
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 
   const driveService = GoogleDriveService.getInstance();
 
-  const loadFiles = async () => {
+  const loadFiles = async (folderId?: string) => {
     try {
       setLoading(true);
       setError(null);
       
-      const driveFiles = await driveService.getFilesFromFolder();
+      const driveFiles = await driveService.getFilesFromFolder(folderId);
       
       const processedFiles: PriceListFile[] = driveFiles.map((file: DriveFile) => {
         const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
@@ -63,8 +70,35 @@ const GoogleDrivePriceListManager: React.FC = () => {
   };
 
   useEffect(() => {
-    loadFiles();
-  }, []);
+    loadFiles(currentFolderId);
+  }, [currentFolderId]);
+
+  const navigateToFolder = async (folderId: string, folderName: string) => {
+    setCurrentFolderId(folderId);
+    
+    // Breadcrumb güncelle
+    if (folderId === '') {
+      // Ana klasöre dönüş
+      setBreadcrumbs([]);
+    } else {
+      // Yeni klasöre giriş - breadcrumb'a ekle
+      const newBreadcrumb = { id: folderId, name: folderName };
+      setBreadcrumbs(prev => [...prev, newBreadcrumb]);
+    }
+  };
+
+  const navigateToBreadcrumb = (index: number) => {
+    if (index === -1) {
+      // Ana klasöre git
+      setCurrentFolderId('');
+      setBreadcrumbs([]);
+    } else {
+      // Belirli bir breadcrumb seviyesine git
+      const targetBreadcrumb = breadcrumbs[index];
+      setCurrentFolderId(targetBreadcrumb.id);
+      setBreadcrumbs(prev => prev.slice(0, index + 1));
+    }
+  };
 
   const sortFiles = (files: PriceListFile[], sortOption: SortOption): PriceListFile[] => {
     return [...files].sort((a, b) => {
@@ -113,9 +147,9 @@ const GoogleDrivePriceListManager: React.FC = () => {
     });
   };
 
-  const openFileInNewTab = (file: PriceListFile) => {
+  const handleFileClick = (file: PriceListFile) => {
     if (file.isFolder) {
-      window.open(`https://drive.google.com/drive/folders/${file.id}`, '_blank', 'noopener,noreferrer');
+      navigateToFolder(file.id, file.name);
     } else {
       window.open(file.viewUrl, '_blank', 'noopener,noreferrer');
     }
@@ -183,7 +217,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
             </p>
           </div>
           <button
-            onClick={loadFiles}
+            onClick={() => loadFiles(currentFolderId)}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -208,7 +242,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
             </div>
             <div className="flex items-center gap-6">
               <button
-                onClick={loadFiles}
+                onClick={() => loadFiles(currentFolderId)}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -231,6 +265,33 @@ const GoogleDrivePriceListManager: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Breadcrumb Navigation */}
+        {breadcrumbs.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-8">
+            <nav className="flex items-center space-x-2 text-sm">
+              <button
+                onClick={() => navigateToBreadcrumb(-1)}
+                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <Home className="h-4 w-4 mr-1" />
+                Ana Klasör
+              </button>
+              {breadcrumbs.map((breadcrumb, index) => (
+                <React.Fragment key={breadcrumb.id}>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <button
+                    onClick={() => navigateToBreadcrumb(index)}
+                    className="text-blue-600 hover:text-blue-800 transition-colors truncate max-w-[200px]"
+                    title={breadcrumb.name}
+                  >
+                    {breadcrumb.name}
+                  </button>
+                </React.Fragment>
+              ))}
+            </nav>
+          </div>
+        )}
 
         {/* Search and Sort */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -288,11 +349,20 @@ const GoogleDrivePriceListManager: React.FC = () => {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => openFileInNewTab(file)}
+                    onClick={() => handleFileClick(file)}
                     className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {file.isFolder ? 'Aç' : 'Görüntüle'}
+                    {file.isFolder ? (
+                      <>
+                        <Folder className="h-4 w-4 mr-2" />
+                        Aç
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Görüntüle
+                      </>
+                    )}
                   </button>
                   {!file.isFolder && (
                     <a
@@ -319,7 +389,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
             </h3>
             <p className="text-gray-600">
               {files.length === 0 
-                ? 'Google Drive klasöründe desteklenen dosya bulunamadı'
+                ? 'Bu klasörde desteklenen dosya bulunamadı'
                 : 'Farklı arama terimleri deneyebilir veya filtreleri değiştirebilirsiniz'
               }
             </p>
