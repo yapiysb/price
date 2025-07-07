@@ -355,7 +355,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
                 <div className="flex items-start mb-4">
                   {getFileIcon(file)}
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-gray-900 break-words text-lg mb-1" title={file.name}>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-1 truncate" title={file.name}>
                       {file.name}
                     </h3>
                     <p className="text-sm text-gray-500 flex items-center">
