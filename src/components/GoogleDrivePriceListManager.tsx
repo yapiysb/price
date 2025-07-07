@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Sheet, Download, Eye, X, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, File, ChevronRight, Home } from 'lucide-react';
+import { Search, Download, RefreshCw, AlertCircle, ExternalLink, ArrowUpDown, Folder, ChevronRight, Home, FolderOpen } from 'lucide-react';
 import { GoogleDriveService, DriveFile } from '../services/googleDriveService';
 
 interface PriceListFile {
@@ -157,24 +157,39 @@ const GoogleDrivePriceListManager: React.FC = () => {
 
   const getFileIcon = (file: PriceListFile) => {
     if (file.isFolder) {
-      return <Folder className="h-8 w-8 text-blue-500 mr-3" />;
+      return (
+        <div className="h-12 w-12 mr-4 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+          <Folder className="h-6 w-6 text-white" />
+        </div>
+      );
     }
     
     switch (file.type) {
       case 'pdf':
         return (
-          <div className="h-8 w-8 mr-3 flex items-center justify-center bg-red-100 rounded text-red-600 text-xs font-bold">
-            PDF
+          <div className="h-12 w-12 mr-4 flex flex-col items-center justify-center bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg">
+            <div className="text-white text-xs font-bold leading-none">PDF</div>
+            <div className="w-6 h-1 bg-white rounded-full mt-1 opacity-80"></div>
           </div>
         );
       case 'excel':
         return (
-          <div className="h-8 w-8 mr-3 flex items-center justify-center bg-green-100 rounded text-green-600 text-xs font-bold">
-            XLS
+          <div className="h-12 w-12 mr-4 flex flex-col items-center justify-center bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+            <div className="text-white text-xs font-bold leading-none">XLS</div>
+            <div className="grid grid-cols-2 gap-0.5 mt-1">
+              <div className="w-1.5 h-1 bg-white rounded-sm opacity-80"></div>
+              <div className="w-1.5 h-1 bg-white rounded-sm opacity-80"></div>
+              <div className="w-1.5 h-1 bg-white rounded-sm opacity-80"></div>
+              <div className="w-1.5 h-1 bg-white rounded-sm opacity-80"></div>
+            </div>
           </div>
         );
       default:
-        return <File className="h-8 w-8 text-gray-500 mr-3" />;
+        return (
+          <div className="h-12 w-12 mr-4 flex items-center justify-center bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl shadow-lg">
+            <div className="text-white text-xs font-bold">FILE</div>
+          </div>
+        );
     }
   };
 
@@ -249,17 +264,26 @@ const GoogleDrivePriceListManager: React.FC = () => {
                 Yenile
               </button>
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">{stats.folders}</div>
-                  <div className="text-sm text-gray-500">Klasör</div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mb-1">
+                    <Folder className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="text-xl font-bold text-blue-600">{stats.folders}</div>
+                  <div className="text-xs text-gray-500">Klasör</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-red-600">{stats.pdfs}</div>
-                  <div className="text-sm text-gray-500">PDF</div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-1">
+                    <div className="text-red-600 text-xs font-bold">PDF</div>
+                  </div>
+                  <div className="text-xl font-bold text-red-600">{stats.pdfs}</div>
+                  <div className="text-xs text-gray-500">PDF</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-600">{stats.excels}</div>
-                  <div className="text-sm text-gray-500">Excel</div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg mb-1">
+                    <div className="text-green-600 text-xs font-bold">XLS</div>
+                  </div>
+                  <div className="text-xl font-bold text-green-600">{stats.excels}</div>
+                  <div className="text-xs text-gray-500">Excel</div>
                 </div>
               </div>
             </div>
@@ -272,7 +296,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
             <nav className="flex items-center space-x-2 text-sm">
               <button
                 onClick={() => navigateToBreadcrumb(-1)}
-                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
               >
                 <Home className="h-4 w-4 mr-1" />
                 Ana Klasör
@@ -282,7 +306,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
                   <ChevronRight className="h-4 w-4 text-gray-400" />
                   <button
                     onClick={() => navigateToBreadcrumb(index)}
-                    className="text-blue-600 hover:text-blue-800 transition-colors truncate max-w-[200px]"
+                    className="text-blue-600 hover:text-blue-800 transition-colors truncate max-w-[200px] px-3 py-2 rounded-lg hover:bg-blue-50"
                     title={breadcrumb.name}
                   >
                     {breadcrumb.name}
@@ -327,34 +351,44 @@ const GoogleDrivePriceListManager: React.FC = () => {
         {/* Files Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedFiles.map((file) => (
-            <div key={file.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div key={file.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center min-w-0 flex-1">
-                    {getFileIcon(file)}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-gray-900 break-words" title={file.name}>
-                        {file.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {file.isFolder ? 'Klasör' : file.size}
-                      </p>
-                    </div>
+                <div className="flex items-start mb-4">
+                  {getFileIcon(file)}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-gray-900 break-words text-lg mb-1" title={file.name}>
+                      {file.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      {file.isFolder ? (
+                        <>
+                          <FolderOpen className="h-4 w-4 mr-1" />
+                          Klasör
+                        </>
+                      ) : (
+                        <>
+                          <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                          {file.size}
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
 
-                <div className="text-sm text-gray-500 mb-4">
-                  <span className="font-medium">Son Değişiklik:</span> {formatDate(file.modifiedTime)}
+                <div className="text-sm text-gray-500 mb-4 bg-gray-50 rounded-lg p-3">
+                  <span className="font-medium">Son Değişiklik:</span>
+                  <br />
+                  {formatDate(file.modifiedTime)}
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleFileClick(file)}
-                    className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
                   >
                     {file.isFolder ? (
                       <>
-                        <Folder className="h-4 w-4 mr-2" />
+                        <FolderOpen className="h-4 w-4 mr-2" />
                         Aç
                       </>
                     ) : (
@@ -369,7 +403,7 @@ const GoogleDrivePriceListManager: React.FC = () => {
                       href={file.downloadUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                      className="inline-flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       İndir
@@ -383,7 +417,9 @@ const GoogleDrivePriceListManager: React.FC = () => {
 
         {filteredAndSortedFiles.length === 0 && !loading && (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <FileText className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+            <div className="flex items-center justify-center w-20 h-20 bg-gray-100 rounded-2xl mx-auto mb-4">
+              <Folder className="h-10 w-10 text-gray-400" />
+            </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               {files.length === 0 ? 'Dosya bulunamadı' : 'Arama sonucu bulunamadı'}
             </h3>
